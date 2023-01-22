@@ -36,16 +36,17 @@ impl ObjectManager {
         //walls
         om.add_object(V3::new(0.0,-10.,5.),BasicShape::Cube([20.,1.2,20.]), true ,20.1, V3::new(0.0,0.,0.));
         om.add_object(V3::new(0.0,0.,15.),BasicShape::Cube([20.,20.,1.2]), true ,20.1, V3::new(0.0,0.,0.));
-        om.add_light(V3::new(10.,10.,-4.),V3::new(1.3,0.4,0.1),0.9);
-        om.add_light(V3::new(0.,100.,0.),V3::new(0.1,0.2,0.9),0.3);
-        om.add_light(V3::new(-3.,0.,-5.),V3::new(0.4,0.4,0.4),0.2);
+        om.add_light(V3::new(10.,10.,-4.),V3::new(1.2,0.4,0.1),0.9);
+        om.add_light(V3::new(0.,100.,0.),V3::new(0.1,0.2,0.9),0.5);
+        om.add_light(V3::new(-6.,0.,-5.),V3::new(0.4,0.4,0.4),0.2);
+        om.cam.0.y -= 3.;
         let desc = ConstraintDesc{
             apoint: V3::new(-2.5,0.0,0.0),
             bpoint: V3::new(-2.5,0.0,0.0),
             has_distance: true,
             has_angular: false,
             distance_compliance: 0.00000,
-            angular_compliance: 0.000000,
+            angular_compliance: 0.00000010,
             distance:  0.0, 
             aorient: UnitQuaternion::<f64>::default(),
             borient: UnitQuaternion::<f64>::default(),
@@ -100,7 +101,7 @@ impl ObjectManager {
 
         self.add_debug_lines_for_cube(0, V3::new(1.,1.,0.)); 
         self.add_debug_lines_for_cube(1,V3::new(1.,0.,1.)); 
-        
+        self.lights[0].pos.x = (ct*0.5).sin()*10.; 
         self.debug.debug_constraint(&self.physics_manager.constraints[0], &self.objects);
 //        self.debug.debug_constraint(&self.physics_manager.constraints[1], &self.objects);
     }

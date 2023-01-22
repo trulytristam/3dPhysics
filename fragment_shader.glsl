@@ -115,7 +115,7 @@ void get_light_attributes(int id, out vec3 light_pos, out vec3 light_color, out 
     light_color = readlight_color; 
     light_brightness = light[id+6];
 }
-vec3 get_light_color(vec3 normal, vec3 inter, int id){
+vec3 get_light_color(vec3 normal, vec3 inter, int id, vec2 uv, float dist, vec3 rd){
     vec3 output = vec3(0.);
     vec3 light_pos; vec3 light_color; float light_brightness;
     get_light_attributes(id, light_pos,light_color,light_brightness);
@@ -131,7 +131,11 @@ vec3 get_light_color(vec3 normal, vec3 inter, int id){
     vec3 lightdot = vec3(clampn(dot(-normal,normalize(inter-light_pos))));
  
     output += lightdot * light_color * light_brightness * shadow;
-    output += pow(lightdot, vec3(20.)) * 0.1* shadow;
+    output += pow(lightdot, vec3(200.)) * 0.2* shadow;
+    if (dist < 0.) output = vec3(0.10,0.10,0.5)/ light_count;
+
+    output += vec3(1.,1.3,1.)*light_color*(0.2+light_brightness)*(1.4* clamp(pow(dot(normalize(rd), normalize(light_pos)),380.),0.,1.));   
+
     return output;
 }
 void main()
@@ -150,23 +154,18 @@ void main()
 
     //lighting
     vec3 color = vec3(0.);
+    float dist = length(inter);
     for(float i = 0.1; i< light_count; i+=1.){
-        color += get_light_color(normal, inter, int(i));
+        color += get_light_color(normal, inter, int(i),uv,di,rd);
     }
 //    color *= vec3(9.4,2.4,0.8);
-    float dist = length(inter);
-    if(di > 0.0){
-        color = color; 
-    }
-    else{
-        color = vec3(0.15,0.15,0.5);
-        dist = 20.;
-    }
+    if(di<0.)dist = 10.;
+    
     float y =  pow(2.718, -dist*0.038);
     y = smoothstep(0.,1.,y);
     vec3 debug = vec3(y);
-    color = mix(vec3(0.2,0.2,0.4),color, 0.5+0.5*y );
-    color = pow(color,vec3(0.5000));
+    color = mix(vec3(0.2,0.2,0.3),color, 0.7+0.3*y );
+    color = pow(color,vec3(0.4500));
     color = smoothstep(0.,1.,color);
     vertexColor = vec4(color,1.);
 }

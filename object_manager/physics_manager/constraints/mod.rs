@@ -26,15 +26,35 @@ pub struct ConstraintDesc {
     pub bjoint_axis: (V3,V3,V3),
     
 }
-
+fn clamp(x:f64, a:f64, b:f64)->f64{
+    return f64::min(b,f64::max(a,x));
+}
 impl ConstraintDesc {
-    fn get_correction(&self, a: &mut Object, b: &mut Object)->Vector3<f64>{
+    fn limit_angle(n:&V3,n1:&V3,n2:&V3, a:f64, b:f64)->V3{
+        let mut out = V3::new(0.,0.,0.);
+        let mut angle = (n1.cross(&n2).dot(n)).asin();
 
-//        let t2 = UnitQuaternion::new(V3::new(PI/2.,0.,0.));
-//        let diff_current_ab = (a.o*UnitQuaternion::new(V3::new(0.,PI,0.))*t2) * b.o.inverse();
-//        2.* V3::new(diff_current_ab.i,diff_current_ab.j,diff_current_ab.k)
-        return (a.o*self.ajoint_axis.2).cross(&(b.o*self.bjoint_axis.2)); 
-          
+        if n1.dot(&n2) < 0. {angle = PI - angle;} 
+        if angle > PI      {angle = angle-2.*PI;} 
+        if angle < -PI     {angle = angle+2.*PI;} 
+
+        if angle < a || angle > b {
+            angle = clamp(angle,a,b);
+            let q = UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(n.clone()), angle);
+            let nn1 = q *n1;
+            out = nn1.cross(&n2);
+        } 
+            
+        out
+    }
+    /// Get correction vector + angle
+    /// based on constraints description of join
+    fn get_correction(&self, a: &mut Object, b: &mut Object)->Vector3<f64>{
+        
+//        return (a.o*self.ajoint_axis.2).cross(&(b.o*self.bjoint_axis.2)); 
+         let x = a.o * self.ajoint_axis.2; 
+         let y = b.o * self.bjoint_axis.2; 
+        return x.cross(&y);//ConstraintDesc::limit_angle(&n,&n1,&n2,-0.1,0.1);
     }
 
     pub fn generate_default_joint_axis_two(&mut self){
@@ -59,8 +79,8 @@ pub struct Constraint{
 }
 
 impl Constraint {
-    fn solve_constraing_angular(&mut self, o1: &mut Object, o2: &mut Object, h: f64){
-        let nvec = self.c_desc.get_correction(o1,o2); 
+    fn apply_angular_correction(&mut self,nvec: V3,  o1: &mut Object, o2: &mut Object, h: f64){
+        
         if nvec.norm() <=0.00001 {return;}
         
         let n = nvec.normalize(); 
@@ -94,6 +114,14 @@ impl Constraint {
         
         o1.o = UQ::new_normalize(o1on + 0.5* Quaternion::<f64>::new(0.,aq.x,aq.y,aq.z)*o1on); 
         o2.o = UQ::new_normalize(o2on - 0.5* Quaternion::<f64>::new(0.,bq.x,bq.y,bq.z)*o2on); 
+
+    }
+    fn solve_constraing_angular(&mut self, o1: &mut Object, o2: &mut Object, h: f64){
+        let nvec = self.c_desc.get_correction(o1,o2); 
+//        self.apply_angular_correction(nvec,o1,o2,h); 
+        let (n,n1,n2) = (o1.o*self.c_desc.ajoint_axis.2, o1.o*self.c_desc.ajoint_axis.0, o2.o*self.c_desc.bjoint_axis.0); 
+        self.apply_angular_correction(ConstraintDesc::limit_angle(&n,&n1,&n2, -0.3, 0.3),o1,o2,h); 
+
 
     }
     fn solve_constraint_linear(&mut self, o1: &mut Object, o2: &mut Object, h: f64){
