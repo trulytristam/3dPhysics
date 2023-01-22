@@ -100,19 +100,16 @@ impl Object {
         self.ii_t = iitopt.unwrap(); 
     } 
     pub fn update(&mut self, h: f64){
-        let damping = if self.is_static {0.} else{0.01};
         self.old_p = self.p;
-        let grav = if self.is_static {0.} else{-9.};
+        let grav = if self.is_static {0.} else{-24.};
         self.v += (self.f_ext*self.i_m*h).xyz() + V3::new(0.,grav,0.)*h;
         self.p += self.v* h;
-        self.v = self.v- (self.v*damping*h);
         self.old_o = self.o;
         
         let inva = self.o.inverse()*self.a;
         let tra = self.i_t*inva;
         let rhs = (self.o.inverse()*self.t_ext - (inva.cross(&tra)));
         self.a += self.o*(self.ii_t * rhs * h); 
-        self.a = self.a - (self.a*damping*h);
 
         let q1 = self.o.normalize();
         let q2 = Quaternion::<f64>::new(0., self.a.x, self.a.y, self.a.z)*0.5 * h * q1;
@@ -120,12 +117,15 @@ impl Object {
         
     }
     pub fn update_velocities(&mut self, h: f64){
+        let damping = if self.is_static {0.} else{0.41};
         self.v = (self.p - self.old_p)/h;
+        self.v = self.v- (self.v*damping*h);
         let dq1 = self.o * self.old_o.inverse(); 
         let dq = dq1.normalize();
         let length = self.a.norm();
         self.a = 2.*V3::new(dq.i,dq.j,dq.k) /h;      
         self.a = if dq.w >=0. {self.a}else{-self.a};
+        self.a = self.a - (self.a*damping*h);
 //        self.a = self.a.normalize() * length;// - (length*h*0.10));
     }
 

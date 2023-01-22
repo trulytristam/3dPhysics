@@ -5,37 +5,52 @@ use nalgebra::*;
 mod graphic_debug;
 mod physics_manager;
 use GJK::*;
+mod light;
 use object::Object;
 use physics_manager::*;
 use object::BasicShape;
+use light::*;
 use physics_manager::*;
 use graphic_debug::GraphicDebug;
+use constraints::ConstraintDesc;
+
+
 type V3 = Vector3<f64>;
 pub struct ObjectManager {
     pub screen_dim: (f64,f64),
     pub cam: (V3,UnitQuaternion<f64>),
     pub debug: GraphicDebug, 
     objects: Vec<Object>,
-    physics_manager: PhysicsManager,
+    pub lights: Vec<Light>,
+    pub physics_manager: PhysicsManager,
 }
 
 impl ObjectManager {
     pub fn new()-> Self{
         let o: Vec<Object> = vec![];
         let d = GraphicDebug{lines: vec![],line_colors: vec![], dots: vec![]};
-        let mut om = ObjectManager{physics_manager: PhysicsManager::new(), objects: o,cam: (V3::new(0.,0.,-1.), UnitQuaternion::default()), debug: d, screen_dim: (0.,0.)};
-        om.add_object(V3::new(0.0,2.,7.5),BasicShape::Cube([5.,0.3,1.]), true, 10., V3::new(0.,0.,0.));
-        om.add_object(V3::new(0.0,0.,6.5),BasicShape::Cube([3.,1.2,0.2]), false ,20.1, V3::new(-2.0,0.,0.));
+        let mut om = ObjectManager{lights: vec![], physics_manager: PhysicsManager::new(), objects: o,cam: (V3::new(0.,0.,-1.), UnitQuaternion::default()), debug: d, screen_dim: (0.,0.)};
+        //shapes
+        om.add_object(V3::new(0.0,0.,4.5),BasicShape::Cube([5.,0.3,1.]), true, 10., V3::new(0.8,0.0,0.)*1.);
+        om.add_object(V3::new(0.0,0.,6.5),BasicShape::Cube([3.,0.2,1.2]), false ,20.1, V3::new(-2.0,0.,0.));
+        //walls
+        om.add_object(V3::new(0.0,-10.,5.),BasicShape::Cube([20.,1.2,20.]), true ,20.1, V3::new(0.0,0.,0.));
+        om.add_object(V3::new(0.0,0.,15.),BasicShape::Cube([20.,20.,1.2]), true ,20.1, V3::new(0.0,0.,0.));
+        om.add_light(V3::new(10.,10.,-4.),V3::new(0.7,0.3,0.1),0.9);
+        om.add_light(V3::new(0.,100.,0.),V3::new(0.1,0.2,0.9),0.3);
+        om.add_light(V3::new(-3.,0.,-5.),V3::new(0.4,0.4,0.4),0.2);
         let desc = ConstraintDesc{
             apoint: V3::new(-2.5,0.0,0.0),
             bpoint: V3::new(-1.5,0.0,0.0),
             has_distance: true,
-            has_angular: true,
-            distance_compliance: 0.0000010,
+            has_angular: false,
+            distance_compliance: 0.00000,
             angular_compliance: 0.000000,
-            distance:  2., 
+            distance:  0.0, 
             aorient: UnitQuaternion::<f64>::default(),
             borient: UnitQuaternion::<f64>::default(),
+            ajoint_axis: (V3::default(),V3::default(),V3::default()),
+            bjoint_axis: (V3::default(),V3::default(),V3::default()),
         };
         let desc2 = ConstraintDesc{
             apoint: V3::new(2.5,0.0,0.0),
@@ -47,10 +62,13 @@ impl ObjectManager {
             distance:  2.,
             aorient: UnitQuaternion::<f64>::default(),
             borient: UnitQuaternion::<f64>::default(),
+            ajoint_axis: (V3::default(),V3::default(),V3::default()),
+            bjoint_axis: (V3::default(),V3::default(),V3::default()),
         };
         
         om.physics_manager.add_constraint(0, 1, desc);
-//       om.physics_manager.add_constraint(0, 1, desc2);
+        om.physics_manager.constraints[0].c_desc.generate_default_joint_axis_two();
+//        om.physics_manager.add_constraint(0, 1, desc2);
         om
     }
     pub fn add_object(&mut self, p: V3, s: BasicShape, bstatic: bool, d: f64, a: V3){ match s{
@@ -59,6 +77,19 @@ impl ObjectManager {
             BasicShape::Sphere(r) => {} ,
         } 
     }
+    pub fn add_light_default(&mut self,p: V3){
+        let light = Light {pos: p, color: V3::new(0.7,0.5,0.2), brightness: 0.7}; 
+
+        self.lights.push(light);
+
+    }
+    pub fn add_light(&mut self,p: V3, c: V3, b: f64){
+        let light = Light {pos: p, color: c, brightness: b}; 
+
+        self.lights.push(light);
+
+    }
+        
     pub fn get_len(&self) -> f32{
         self.objects.len() as f32
     }
@@ -67,8 +98,8 @@ impl ObjectManager {
         self.debug.clear();
         self.physics_manager.update_physics(&mut self.objects, dt,ct);
 
-//        self.add_debug_lines_for_cube(0, V3::new(1.,1.,0.)); 
-//        self.add_debug_lines_for_cube(1,V3::new(1.,0.,1.)); 
+        self.add_debug_lines_for_cube(0, V3::new(1.,1.,0.)); 
+        self.add_debug_lines_for_cube(1,V3::new(1.,0.,1.)); 
         
         self.debug.debug_constraint(&self.physics_manager.constraints[0], &self.objects);
 //        self.debug.debug_constraint(&self.physics_manager.constraints[1], &self.objects);
@@ -104,6 +135,19 @@ impl ObjectManager {
             vp[oi*3+2]= o.z as f32;
         }   
         vp
+    }
+    pub fn get_lights(&self)->[f32;1024]{
+        let mut out = [0.;1024];
+        let mut b = 0;
+        for light in self.lights.iter() {
+            
+            let a = light.transform_then_to_array(self.cam);
+            for i in 0..a.len() {
+                out[(b+i)as usize] = a[i];
+            }
+            b+=a.len();
+         }
+        out
     }
     pub fn get_object_dims(&self)->[f32;1024]{
         let mut vp = [0.;1024];

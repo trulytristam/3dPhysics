@@ -1,6 +1,6 @@
 extern crate nalgebra;
 use nalgebra::*;
-use super::Constraint;
+use super::physics_manager::constraints::*;
 use super::Object;
 type V3 = Vector3<f64>;
 

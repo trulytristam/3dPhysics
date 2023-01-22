@@ -4,6 +4,7 @@ out vec4 vertexColor; // specify a color output to the fragment shader
 in vec4 gl_FragCoord;
 uniform uint windowSizeX;
 uniform float object_count;
+uniform float light_count;
 uniform uint windowSizeY;
 uniform float iTime;
 uniform vec3 cPos;
@@ -13,6 +14,9 @@ layout (binding = 0) uniform positions {
 
 layout (binding = 0) uniform orientations {
     float orientation[4096];
+};
+layout (binding = 0) uniform lights {
+    float light[1024];
 };
 layout (binding = 0) uniform dims {
     float dimension[1024];
@@ -24,7 +28,10 @@ float sphereSDF(vec3 p, float r){
 
 float cubeSDF(vec3 p, vec3 b){
     vec3 q = abs(p) - b;
-    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - 0.04;
+    float r = 0.001;
+    float d = length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0)-r - 0.2;
+    d*=0.5;
+    return d;
 }
 vec3 normalize(vec3 a){
     return a/ length(a);
@@ -65,7 +72,7 @@ float rayCast(vec3 ro, vec3 rd){
 
         float m= map(p);
         
-        if(abs(m) < 0.001){
+        if(abs(m) < 0.01){
             return t;
         }
         if(t > 200.)break;
@@ -75,6 +82,20 @@ float rayCast(vec3 ro, vec3 rd){
 
     return -1.;
 }
+float shadowCast(vec3 ro, vec3 rd,float maxd){
+    float t = 0.01;
+    float mind = 10000000000.;
+    for(int i =0; i< 150; i++){
+        vec3 p = ro + rd*t;
+        float m= map(p);
+        mind = min(mind, m/t*8.); 
+        if(t >= maxd){
+            break;
+        }
+        t+= m/2.;
+    }
+    return mind;
+}
 vec3 calcNorm(vec3 p){
     float delt = 0.0001;
     
@@ -83,6 +104,34 @@ vec3 calcNorm(vec3 p){
                    map(p+vec3(0.,0.,delt))-map(p-vec3(0.,0.,delt))
     );
     return normalize(gr);
+}
+void get_light_attributes(int id, out vec3 light_pos, out vec3 light_color, out float light_brightness){
+    id*= 7;
+
+    vec3 readlight_pos    = vec3(light[id+0],light[id+1],light[id+2]);
+    vec3 readlight_color  = vec3(light[id+3],light[id+4],light[id+5]);
+    light_pos   = readlight_pos; 
+    light_color = readlight_color; 
+    light_brightness = light[id+6];
+}
+vec3 get_light_color(vec3 normal, vec3 inter, int id){
+    vec3 output = vec3(0.);
+    vec3 light_pos; vec3 light_color; float light_brightness;
+    get_light_attributes(id, light_pos,light_color,light_brightness);
+
+    vec3 inter_to_light = light_pos - inter;
+
+    float shadow = shadowCast(inter+normal*0.01,normalize(inter_to_light),length(inter_to_light));
+
+    shadow = smoothstep(0.,0.8,shadow); 
+    shadow = 0.1 + (shadow*0.9);
+    shadow = clampn(shadow);
+
+    vec3 lightdot = vec3(clampn(dot(-normal,normalize(inter-light_pos))));
+ 
+    output += lightdot * light_color * light_brightness * shadow;
+    output += pow(lightdot, vec3(20.)) * 0.1* shadow;
+    return output;
 }
 void main()
 {
@@ -98,27 +147,21 @@ void main()
     vec3 inter = ro + rd* di;
     vec3 normal = calcNorm(inter);
 
-    vec3 sunDot = vec3(clampn(dot(-normal,normalize(inter-sunpos))));
-    vec3 sunColor = vec3(0.4,0.2,0.1);
-    vec3 skyDot = vec3(clampn(dot(-normal,vec3(0.,-1.,0.)))); 
-    vec3 skyColor = vec3(0.2,0.2,0.5);
-
     //lighting
     vec3 color = vec3(0.);
-    sunDot = smoothstep(0.,1. ,sunDot );
-    color += sunDot * sunColor* 1.;
-//    color += pow(sunDot,vec3(140.)) * sunColor* 10.;
-    color += (1.-sunDot)* .001;
-    color += skyDot * 1.6* skyColor;
-    color += (1.-skyDot)* 0.003* skyColor;
-    color *= vec3(9.4,2.4,0.8);
-
-    color = pow(color,vec3(0.4545));
-
+    for(float i = 0.1; i< light_count; i+=1.){
+        color += get_light_color(normal, inter, int(i));
+    }
+//    color *= vec3(9.4,2.4,0.8);
     if(di > 0.0){
-        vertexColor = vec4(color,1.); 
+        color = color; 
     }
     else{
-        vertexColor = vec4(0.1*(sunColor+skyColor),1.0);
+        color = vec3(0.15,0.15,0.5);
     }
+
+    color = mix(color, vec3(0.2,0.2,0.2), pow(2.81, -length(inter)*0.5));
+    color = pow(color,vec3(0.4545));
+    color = smoothstep(0.,1.,color);
+    vertexColor = vec4(color,1.);
 }

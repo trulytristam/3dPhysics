@@ -14,7 +14,10 @@ fn main(){
     let mut om = object_manager::ObjectManager::new();
 
     let event_loop = glutin::event_loop::EventLoop::new();
-    let wb = glutin::window::WindowBuilder::new().with_fullscreen(Some(Fullscreen::Borderless(None)));
+    let wb = glutin::window::WindowBuilder::new().with_min_inner_size(PhysicalSize{width: 2000,height: 1120});
+
+               // .with_fullscreen(Some(Fullscreen::Borderless(None)))
+        
     let cb = glutin::ContextBuilder::new();
         // Create a window
     let display = glium::Display::new(wb,cb,&event_loop).unwrap();
@@ -54,6 +57,7 @@ fn main(){
         let ub_o = glium::uniforms::UniformBuffer::new(&display,om.get_object_orientations()).unwrap();
         let debug_line_colors = glium::uniforms::UniformBuffer::new(&display,om.debug.get_line_colors() ).unwrap();
         let ub_o_dim = glium::uniforms::UniformBuffer::new(&display,om.get_object_dims()).unwrap();
+        let lights_buffer = glium::uniforms::UniformBuffer::new(&display,om.get_lights()).unwrap();
         let current_time = std::time::Instant::now().duration_since(a).as_secs_f64();
         let ws = display.get_framebuffer_dimensions(); 
         let uniforms = glium::uniform! {
@@ -61,12 +65,15 @@ fn main(){
             windowSizeY: ws.1,
             cPos: cam_pos,
             iTime: current_time, 
+            light_count : om.lights.len() as f32,
             object_count: om.get_len(),
             lineColors: &debug_line_colors,
+            lights: &lights_buffer,
             positions: &ub_pos,
             dims: &ub_o_dim,
             orientations: &ub_o};
         let mut target = display.draw();
+        target.clear_color(1.,0.,0.,0.);
         target.draw(&vertex_buffer, &index_buffer, &program,&uniforms,&Default::default()).unwrap();
         let (debug_p,debug_v) = get_debug_program(&display,  &mut om);
 
@@ -75,7 +82,7 @@ fn main(){
             ..Default::default()
         };
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::LinesList);
-        target.draw(&debug_v, &indices, &debug_p ,&uniforms,&param).unwrap();
+//        target.draw(&debug_v, &indices, &debug_p ,&uniforms,&Default::default()).unwrap();
         // println!("matMain: {:?}", OM.getObjectOrientations()[0]);
         target.finish().unwrap();
         let next_frame_time = std::time::Instant::now() +
@@ -88,14 +95,12 @@ fn main(){
         match ev {
                 glutin::event::Event::WindowEvent { event, .. } => {
                 
-                //process_input(&mut om, &event),
+                process_input(&mut om, &event);
                 match event {
                     glutin::event::WindowEvent::CloseRequested => {
                         *control_flow = glutin::event_loop::ControlFlow::Exit;
                         return;
                     },
-
-
                     _ => return,
                 }},
             _ => (),
@@ -103,10 +108,11 @@ fn main(){
         }
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
     });
-    
+   //ends here 
 }
 
 use glium::glutin;
+use winit::dpi::PhysicalSize;
 use winit::window::Fullscreen;
 fn process_input(om: &mut object_manager::ObjectManager, event: &glutin::event::WindowEvent<'_>){
     let input = match *event {
@@ -118,8 +124,8 @@ fn process_input(om: &mut object_manager::ObjectManager, event: &glutin::event::
         Some(key) => key,
         None => return,
     };
-    let speed = 5.5f64;
-    let aspeed = 3.5f64;
+    let speed = 20.5f64;
+    let aspeed = 5.5f64;
     let forward =om.cam.1* Vector3::<f64>::new(0.,0.,1.);
     let right =om.cam.1* Vector3::<f64>::new(1.,0.,0.);
     match key {
@@ -127,6 +133,9 @@ fn process_input(om: &mut object_manager::ObjectManager, event: &glutin::event::
         glutin::event::VirtualKeyCode::D => om.cam.0 += right*speed*0.016666, 
         glutin::event::VirtualKeyCode::W => om.cam.0 += forward*speed*0.016666, 
         glutin::event::VirtualKeyCode::S => om.cam.0 -= forward*speed*0.016666,  
+        glutin::event::VirtualKeyCode::C => om.physics_manager.constraints[0].c_desc.has_angular = false, 
+        glutin::event::VirtualKeyCode::V => om.physics_manager.constraints[0].c_desc.has_angular = true, 
+        
         glutin::event::VirtualKeyCode::Left => om.cam.1 *= nalgebra::UnitQuaternion::<f64>::new(Vector3::<f64>::new(0.,1.,0.)*-aspeed*0.016666), 
         glutin::event::VirtualKeyCode::Right=> om.cam.1 *= nalgebra::UnitQuaternion::<f64>::new(Vector3::<f64>::new(0.,1.,0.)*aspeed*0.016666), 
         _ => (),
