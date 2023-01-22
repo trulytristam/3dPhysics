@@ -31,8 +31,8 @@ impl ObjectManager {
         let d = GraphicDebug{lines: vec![],line_colors: vec![], dots: vec![]};
         let mut om = ObjectManager{lights: vec![], physics_manager: PhysicsManager::new(), objects: o,cam: (V3::new(0.,0.,-1.), UnitQuaternion::default()), debug: d, screen_dim: (0.,0.)};
         //shapes
-        om.add_object(V3::new(0.0,0.,4.5),BasicShape::Cube([5.,0.3,1.]), true, 10., V3::new(0.8,0.0,0.)*1.);
-        om.add_object(V3::new(0.0,0.,6.5),BasicShape::Cube([3.,0.2,1.2]), false ,20.1, V3::new(-2.0,0.,0.));
+        om.add_object(V3::new(0.0,0.,4.5),BasicShape::Cube([5.,0.3,1.2]), true, 10., V3::new(0.8,0.4,0.)*1.);
+        om.add_object(V3::new(0.0,0.,6.5),BasicShape::Cube([5.,0.3,1.2]), false ,20.1, V3::new(-2.0,0.,0.));
         //walls
         om.add_object(V3::new(0.0,-10.,5.),BasicShape::Cube([20.,1.2,20.]), true ,20.1, V3::new(0.0,0.,0.));
         om.add_object(V3::new(0.0,0.,15.),BasicShape::Cube([20.,20.,1.2]), true ,20.1, V3::new(0.0,0.,0.));
@@ -41,7 +41,7 @@ impl ObjectManager {
         om.add_light(V3::new(-3.,0.,-5.),V3::new(0.4,0.4,0.4),0.2);
         let desc = ConstraintDesc{
             apoint: V3::new(-2.5,0.0,0.0),
-            bpoint: V3::new(-1.5,0.0,0.0),
+            bpoint: V3::new(-2.5,0.0,0.0),
             has_distance: true,
             has_angular: false,
             distance_compliance: 0.00000,
