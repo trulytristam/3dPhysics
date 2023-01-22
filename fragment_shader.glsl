@@ -29,7 +29,8 @@ float sphereSDF(vec3 p, float r){
 float cubeSDF(vec3 p, vec3 b){
     vec3 q = abs(p) - b;
     float r = 0.001;
-    float d = length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0)-r - 0.2;
+    float volume = b.x*b.y*b.z;
+    float d = length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0)-r - (0.03*volume);
     d*=0.5;
     return d;
 }
@@ -123,8 +124,8 @@ vec3 get_light_color(vec3 normal, vec3 inter, int id){
 
     float shadow = shadowCast(inter+normal*0.01,normalize(inter_to_light),length(inter_to_light));
 
-    shadow = smoothstep(0.,0.8,shadow); 
-    shadow = 0.1 + (shadow*0.9);
+    shadow = smoothstep(-0.1,0.8,shadow); 
+    shadow = 0.0 + (shadow*1.0);
     shadow = clampn(shadow);
 
     vec3 lightdot = vec3(clampn(dot(-normal,normalize(inter-light_pos))));
@@ -153,15 +154,19 @@ void main()
         color += get_light_color(normal, inter, int(i));
     }
 //    color *= vec3(9.4,2.4,0.8);
+    float dist = length(inter);
     if(di > 0.0){
         color = color; 
     }
     else{
         color = vec3(0.15,0.15,0.5);
+        dist = 20.;
     }
-
-    color = mix(color, vec3(0.2,0.2,0.2), pow(2.81, -length(inter)*0.5));
-    color = pow(color,vec3(0.4545));
+    float y =  pow(2.718, -dist*0.038);
+    y = smoothstep(0.,1.,y);
+    vec3 debug = vec3(y);
+    color = mix(vec3(0.2,0.2,0.4),color, 0.5+0.5*y );
+    color = pow(color,vec3(0.5000));
     color = smoothstep(0.,1.,color);
     vertexColor = vec4(color,1.);
 }

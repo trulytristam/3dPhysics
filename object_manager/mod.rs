@@ -36,7 +36,7 @@ impl ObjectManager {
         //walls
         om.add_object(V3::new(0.0,-10.,5.),BasicShape::Cube([20.,1.2,20.]), true ,20.1, V3::new(0.0,0.,0.));
         om.add_object(V3::new(0.0,0.,15.),BasicShape::Cube([20.,20.,1.2]), true ,20.1, V3::new(0.0,0.,0.));
-        om.add_light(V3::new(10.,10.,-4.),V3::new(0.7,0.3,0.1),0.9);
+        om.add_light(V3::new(10.,10.,-4.),V3::new(1.3,0.4,0.1),0.9);
         om.add_light(V3::new(0.,100.,0.),V3::new(0.1,0.2,0.9),0.3);
         om.add_light(V3::new(-3.,0.,-5.),V3::new(0.4,0.4,0.4),0.2);
         let desc = ConstraintDesc{

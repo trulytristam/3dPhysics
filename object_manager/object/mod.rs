@@ -101,7 +101,7 @@ impl Object {
     } 
     pub fn update(&mut self, h: f64){
         self.old_p = self.p;
-        let grav = if self.is_static {0.} else{-24.};
+        let grav = if self.is_static {0.} else{-33.};
         self.v += (self.f_ext*self.i_m*h).xyz() + V3::new(0.,grav,0.)*h;
         self.p += self.v* h;
         self.old_o = self.o;

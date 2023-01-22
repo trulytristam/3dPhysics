@@ -60,7 +60,6 @@ pub struct Constraint{
 
 impl Constraint {
     fn solve_constraing_angular(&mut self, o1: &mut Object, o2: &mut Object, h: f64){
-         
         let nvec = self.c_desc.get_correction(o1,o2); 
         if nvec.norm() <=0.00001 {return;}
         
