@@ -3,23 +3,23 @@
 out vec4 vertexColor; // specify a color output to the fragment shader
 in vec4 gl_FragCoord;
 uniform uint windowSizeX;
+uniform uint windowSizeY;
 uniform float object_count;
 uniform float light_count;
-uniform uint windowSizeY;
 uniform float iTime;
 uniform vec3 cPos;
 layout (binding = 0) uniform positions {
-    float position[1024];
+    float position[512];
 };
 
 layout (binding = 0) uniform orientations {
-    float orientation[4096];
+    float orientation[1024];
 };
 layout (binding = 0) uniform lights {
-    float light[1024];
+    float light[512];
 };
 layout (binding = 0) uniform dims {
-    float dimension[1024];
+    float dimension[512];
 };
 
 float sphereSDF(vec3 p, float r){
@@ -145,7 +145,7 @@ void main()
     vec2 fragCoord = gl_FragCoord.xy/dim; 
     vec2 uv = fragCoord *2.0 - 1.; 
     uv.y *=dim.y/dim.x; 
-    vec3 ro = cPos; 
+    vec3 ro = vec3(0.); 
     vec3 rd = vec3(uv,0.7);
     vec3 sunpos = vec3(5.,5.,-4.);
     float di = rayCast(ro,rd);

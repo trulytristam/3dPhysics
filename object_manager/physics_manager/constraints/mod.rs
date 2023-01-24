@@ -118,9 +118,9 @@ impl Constraint {
     }
     fn solve_constraing_angular(&mut self, o1: &mut Object, o2: &mut Object, h: f64){
         let nvec = self.c_desc.get_correction(o1,o2); 
-//        self.apply_angular_correction(nvec,o1,o2,h); 
+        self.apply_angular_correction(nvec,o1,o2,h); 
         let (n,n1,n2) = (o1.o*self.c_desc.ajoint_axis.2, o1.o*self.c_desc.ajoint_axis.0, o2.o*self.c_desc.bjoint_axis.0); 
-        self.apply_angular_correction(ConstraintDesc::limit_angle(&n,&n1,&n2, -0.3, 0.3),o1,o2,h); 
+//        self.apply_angular_correction(ConstraintDesc::limit_angle(&n,&n1,&n2, -0.3, 0.3),o1,o2,h); 
 
 
     }

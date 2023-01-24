@@ -17,7 +17,7 @@ impl PhysicsManager {
         PhysicsManager { constraints: vec![]}
     }
     pub fn update_physics(&mut self, objects: &mut Vec<Object>, dt: f64,ct: f64){
-        let n_sub = 50;
+        let n_sub = 20;
         let h = dt/(n_sub as f64);
         self.init_contraints();
         for _ in 0..n_sub{
