@@ -70,10 +70,15 @@ pub trait IntersectsRay {
 impl IntersectsRay for (V3,V3){//plane interseciton
     fn intersect_ray(&self, ro: V3, rd: V3)->Option<V3>{
         let nn = -self.1;
-        let d = (ro-self.0).dot(&nn);
+        let d = (self.0-ro).dot(&nn);
         let rp = rd.dot(&nn);
         let ratio = 1./rp;
-        if d > 0. && rp > 0. {Some(ro + rd * ratio * d)} else{None} 
+        if d > 0. && rp > 0. {
+            Some(ro + rd * ratio * d)
+        }
+        else{
+            None
+        } 
     }
 }
 
@@ -81,16 +86,19 @@ impl IntersectsRay for (V3,V3,V3){//triangle intersection
     fn intersect_ray(&self, ro: V3, rd: V3)-> Option<V3>{
         let ab = self.1 - self.0;
         let ac = self.2 - self.0;
-        let plane_intersect = (self.0, ab.cross(&ac)).intersect_ray(ro,rd);
+        let plane_intersect = (self.0, ab.cross(&ac).normalize()).intersect_ray(ro,rd);
         if let Some(point) = plane_intersect {
-            Some(
-                point + triangle_closest(&(self.0-point), &(self.1-point), &(self.1-point))
-            )
+            let tc = triangle_closest(&(self.0-point), &(self.1-point), &(self.2-point));
+            if tc.norm() > 0.0001 {
+                Some(point)
+            }
+            else{
+                None
+            }
         }
         else{
             None
         }
-
     }
 }
                                   

@@ -8,6 +8,7 @@ use std::f64::consts::PI;
 
 enum ConstraintType {}
 
+#[derive(Debug,Default)]
 pub struct ConstraintDesc {
     pub apoint: V3,
     pub bpoint: V3,
@@ -71,6 +72,7 @@ impl ConstraintDesc {
         (a, c, b)
     }
 }
+#[derive(Debug, Default)]
 pub struct Constraint {
     pub a: u32,
     pub b: u32,
@@ -133,6 +135,7 @@ impl Constraint {
         let ii_ta = o1.ii_t;
         let ii_tb = o2.ii_t;
         let between = r2_global - r1_global;
+        if between.norm() < self.c_desc.distance {return;}
         let n = between.normalize();
         let r1 = r1_global - o1.p;
         let r2 = r2_global - o2.p;
@@ -166,6 +169,33 @@ impl Constraint {
         o2.o = UQ::new_normalize(o2on - 0.5 * Quaternion::<f64>::new(0., bq.x, bq.y, bq.z) * o2on);
 
         self.lagrange += dy;
+    }
+    
+    pub fn solve_constraint_linear_object_point(&mut self, o1: &mut Object, point: V3, dt: f64) {
+        let h = dt/20.;
+        for i in 0..20{
+            let r1_global = o1.localtoglobal(self.c_desc.apoint);
+            let between = point - r1_global;
+            if between.norm() > self.c_desc.distance{
+                let n = between.normalize();
+                let ii_ta = o1.ii_t;
+                let r1 = r1_global - o1.p;
+                let c = self.c_desc.distance - between.norm();
+                let r1n1 = o1.o.inverse() * r1.cross(&n);
+                let w1 = (1. / o1.m) + (r1n1.transpose() * ii_ta * r1n1).x;
+                let a = self.c_desc.distance_compliance / (h * h);
+                let dy = (-c - a * self.lagrange) / (w1  + a);
+                let p = n * dy;
+                //update pos
+                o1.p += p / o1.m;
+                let p1_local = o1.o.inverse() * p;
+                let mut aq = o1.ii_t * (self.c_desc.apoint.cross(&p1_local));
+                aq = o1.o * aq;
+                let o1on = o1.o.normalize();
+                o1.o = UQ::new_normalize(o1on + 0.5 * Quaternion::<f64>::new(0., aq.x, aq.y, aq.z) * o1on);
+                self.lagrange += dy;
+            }
+        }
     }
 
     pub fn solve_constraint(&mut self, objects: &mut Vec<Object>, h: f64) {

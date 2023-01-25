@@ -10,12 +10,12 @@ pub enum BasicShape {
 }
 use nalgebra::*;
 
-use super::GJK::Collider;
+use super::{GJK::Collider, physics_manager::ray_shape_intersection::IntersectsRay};
 type V3 = Vector3<f64>;
 type V4 = Vector4<f64>;
 
 #[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Clone,Default)]
 pub struct Object {
     pub p: V3,
     pub old_p: V3,
@@ -72,7 +72,7 @@ impl Object {
         let x = (w2 + h2) * mo12;
         let y = (d2 + h2) * mo12;
         let z = (w2 + d2) * mo12;
-        let mut m = Matrix3::<f64>::new(x, 0., 0., 0., y, 0., 0., 0., z);
+        let m = Matrix3::<f64>::new(x, 0., 0., 0., y, 0., 0., 0., z);
         return m;
     }
     pub fn orient_ii_t(&mut self) {
@@ -89,8 +89,8 @@ impl Object {
                 }
                 let it = Object::generate_rectangle_tensor(dim[0], dim[1], dim[2], temp.m);
                 temp.inertia_tensor_local = it;
-                let mut rng = rand::thread_rng();
-                let mut rd = || rng.gen_range(-1.0f64..1.0);
+//                let rng = rand::thread_rng();
+//                let mut rd = || rng.gen_range(-1.0f64..1.0);
                 temp.is_static = bstatic;
                 temp.a = aa;
                 // temp.a = Vector4::new(0.,1.,0.,0.4).normalize();
@@ -108,10 +108,18 @@ impl Object {
                     }
                 }
                 println!("temp data from object new: {:?}",temp.data); 
-                temp.trianglelist.push((0,2,1)); //0,2,3,1
-                temp.trianglelist.push((1,2,3));
-                temp.trianglelist.push((0,1,3)); //0,1,5,4 
-                temp.trianglelist.push((1,1,5)); //0,1,5,4 
+                temp.trianglelist.push((0,2,3)); // right
+                temp.trianglelist.push((3,1,0));
+                temp.trianglelist.push((0,1,5)); // top
+                temp.trianglelist.push((5,4,0));
+                temp.trianglelist.push((1,3,7)); // front
+                temp.trianglelist.push((7,5,1));
+                temp.trianglelist.push((4,5,7)); // left
+                temp.trianglelist.push((7,6,4));
+                temp.trianglelist.push((7,3,2)); // bot
+                temp.trianglelist.push((2,6,7));
+                temp.trianglelist.push((0,4,6)); // back
+                temp.trianglelist.push((6,2,0));
             }
             BasicShape::Pyramid => {}
             BasicShape::Sphere(r) => {}
@@ -119,9 +127,28 @@ impl Object {
         temp
     }
     ///find intersection with ray in world space and return an Option<V3> of the local intersection
-    ///point
-    pub fn intersects(&self, ro: V3, rd: V3)->Option<V3>{
-        None
+    ///output is point and distance
+    pub fn intersects(&self, ro: V3, rd: V3)->Option<(V3,f64)>{
+        let mut  output: Option<V3> = None;
+        for tl in self.trianglelist.iter(){
+            let ct = self.get_collider_triangle(tl);
+            if output == None{
+                output = ct.intersect_ray(ro, rd);
+            }//output is global
+        }        
+        if output == None {
+            return None;
+        }
+        else {
+            let global_point = self.globaltolocal(output.unwrap()); 
+            return Some((global_point,(output.unwrap()-ro).norm()));
+        }
+    }
+    pub fn get_collider_triangle(&self, tl: &(usize,usize,usize))->(V3,V3,V3){
+        let c = &self.collider;
+        (c.data[tl.0],
+         c.data[tl.1],
+         c.data[tl.2])
     }
     pub fn generate_collider(&mut self) {
         self.collider.data.clear();
@@ -165,6 +192,6 @@ impl Object {
         self.o * p + self.p
     }
     pub fn globaltolocal(&self, p: V3) -> V3 {
-        self.o * (p - self.p)
+        self.o.inverse() * (p - self.p)
     }
 }

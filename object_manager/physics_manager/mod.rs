@@ -17,10 +17,11 @@ impl PhysicsManager {
             constraints: vec![],
         }
     }
-    pub fn update_physics(&mut self, objects: &mut Vec<Object>, dt: f64, ct: f64) {
+    pub fn update_physics(&mut self, objects: &mut Vec<Object>,mouse_object:&mut Constraint, dt: f64, ct: f64) {
         let n_sub = 20;
         let h = dt / (n_sub as f64);
         self.init_contraints();
+        mouse_object.lagrange = 0.;
         for _ in 0..n_sub {
             for o in objects.iter_mut() {
                 o.generate_collider();
@@ -28,7 +29,7 @@ impl PhysicsManager {
                 o.orient_ii_t();
             }
 
-            self.solve_positions(objects, h);
+            self.solve_positions(objects,mouse_object, h);
             for o in objects.iter_mut() {
                 if !o.is_static {
                     o.update_velocities(h);
@@ -51,9 +52,17 @@ impl PhysicsManager {
         };
         self.constraints.push(c);
     }
-    fn solve_positions(&mut self, objects: &mut Vec<Object>, h: f64) {
+    fn solve_positions(&mut self, objects: &mut Vec<Object>,mouse_object:&mut Constraint, h: f64) {
         for c in self.constraints.iter_mut() {
             c.solve_constraint(objects, h);
         }
+
+        let selected_object = &mut objects[mouse_object.a as usize];
+        if !selected_object.is_static && mouse_object.c_desc.has_distance {
+            mouse_object.solve_constraint_linear_object_point(selected_object,
+                                                              mouse_object.c_desc.bpoint, h);
+        }
+
+        
     }
 }

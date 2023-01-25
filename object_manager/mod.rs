@@ -19,11 +19,15 @@ use object::Object;
 use physics_manager::*;
 use physics_manager::*;
 
+use self::physics_manager::constraints::Constraint;
+use self::physics_manager::ray_shape_intersection::IntersectsRay;
+
 type V3 = Vector3<f64>;
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Selection{
     pub id: Option<usize>,
     pub point_local: V3,
+    pub constraint: Constraint,
 }
 pub struct ObjectManager {
     pub screen_dim: (f64, f64),
@@ -57,11 +61,11 @@ impl ObjectManager {
         };
         //shapes
         om.add_object(
-            V3::new(0.0, 0., 4.5),
+            V3::new(0.0, 2., 4.5),
             BasicShape::Cube([5., 0.3, 1.2]),
             true,//static
             10.,
-            V3::new(0.8, 0.4, 0.) * 1.,
+            V3::new(0.8, 0.4, 0.) * 0.1,
         );
         om.add_object(
             V3::new(0.0, 0., 6.5),
@@ -95,7 +99,7 @@ impl ObjectManager {
             bpoint: V3::new(-2.5, 0.0, 0.0),
             has_distance: true,
             has_angular: false,
-            distance_compliance: 0.00000,
+            distance_compliance: 0.00001,
             angular_compliance: 0.000000010,
             distance: 2.0,
             aorient: UnitQuaternion::<f64>::default(),
@@ -195,14 +199,20 @@ impl ObjectManager {
         self.cam.1 * V3::new(0., 0., 1.)
     }
     pub fn select_object(&mut self){
+        let mut min_dist = std::f64::MAX;
         let mut i = 0;
+        let ray = self.get_mouse_ray();
         for o in self.objects.iter(){
-            if let Some(intersection) = o.intersects(self.cam.0,self.cam.1*V3::new(0.,0.,1.)) {
-                self.selection.point_local = intersection;
-                self.selection.id = Some(i);
+            if let Some(intersection) = o.intersects(self.cam.0,ray) {
+                if intersection.1 < min_dist{
+                    self.selection.point_local = intersection.0;
+                    self.selection.id = Some(i);
+                    min_dist = intersection.1;
+                }
             }
             i+=1;
         }
+        println!("{:?}",self.selection);
     }
     pub fn deselect_object(&mut self){
         self.selection.id = None; 
@@ -244,14 +254,52 @@ impl ObjectManager {
         self.debug.clear();
         self.handle_input(dt);
         self.input_manager.update();
-        self.physics_manager
-            .update_physics(&mut self.objects, dt, ct);
+        self.physics_manager.update_physics(&mut self.objects,&mut self.selection.constraint, dt, ct);
+        self.handle_selection(dt);
 
 //        self.add_debug_lines_for_cube(0, V3::new(1., 1., 0.));
 //        self.add_debug_lines_for_cube(1, V3::new(1., 0., 1.));
         //        self.lights[0].pos.x = (ct*0.5).sin()*10.;
                 self.debug.debug_constraint(&self.physics_manager.constraints[0], &self.objects);
+        if let Some(id) = self.selection.id {
+            let apoint = self.objects[id].localtoglobal(self.selection.constraint.c_desc.apoint);
+            self.debug.addline(self.selection.constraint.c_desc.bpoint,apoint,V3::new(0.,0.,1.));
+        }
         //        self.debug.debug_constraint(&self.physics_manager.constraints[1], &self.objects);
+    }
+    pub fn handle_selection(&mut self, dt: f64){
+        if let Some(index) = self.selection.id {
+            self.selection.constraint.a = index as u32;
+            self.selection.constraint.c_desc.apoint = self.selection.point_local;
+            self.selection.constraint.c_desc.has_angular  = false;
+            self.selection.constraint.c_desc.has_distance = true;
+            self.selection.constraint.c_desc.distance = 0.;
+            self.selection.constraint.c_desc.distance_compliance = 0.000001;
+            let o1 = &self.objects[index];  
+            let o1_point_global = o1.localtoglobal(self.selection.point_local);
+            let point = self.mouse_intersects_plane(o1_point_global);
+            let o1_mut = &mut self.objects[index];  
+            self.selection.constraint.c_desc.bpoint = point;
+
+        }
+        else{
+            self.selection.constraint.c_desc.has_distance = false;
+        }
+         
+    }
+    pub fn mouse_intersects_plane(&self,point:V3)->V3{
+        let cam_forward = (self.cam.1 * V3::new(0.,0.,1.)).normalize();
+        let dist = (point-self.cam.0).dot(&cam_forward);
+        let ray = self.get_mouse_ray();
+        (cam_forward*dist, -cam_forward).intersect_ray(self.cam.0, ray).unwrap()    
+    }
+    pub fn get_mouse_ray(&self)->V3{
+        let mscreen = self.input_manager.mouse.position;
+        let mut uv = Vector2::<f64>::new(
+        mscreen.x/self.screen_dim.0,
+        mscreen.y/self.screen_dim.1)*2. -Vector2::<f64>::new(1.,1.);
+        uv.y *= -self.screen_dim.1/self.screen_dim.0;
+        self.cam.1 * V3::new(uv.x,uv.y,0.7).normalize()
     }
     pub fn get_cam_pos(&self) -> [f32; 3] {
         return [

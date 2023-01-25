@@ -3,7 +3,7 @@ use nalgebra::Vector3;
 use rand::Rng;
 type V3 = Vector3<f64>;
 
-#[derive(Clone)]
+#[derive(Default,Clone)]
 pub struct Collider {
     pub data: Vec<V3>,
 }
@@ -53,6 +53,7 @@ pub enum SType {
     Line(V3, V3),
     Face(V3, V3, V3),
 }
+
 impl SType {
     pub fn to_simplex(&self) -> Simplex {
         match self {
@@ -62,6 +63,7 @@ impl SType {
         }
     }
 }
+
 fn line_closest(p: &V3, d: V3, dn: V3) -> (V3, SType) {
     let dist = -p.dot(&dn);
     let dlen = d.norm();
@@ -80,6 +82,7 @@ fn line_closest(p: &V3, d: V3, dn: V3) -> (V3, SType) {
         }
     }
 }
+
 pub fn triangle_closest(i: &V3, j: &V3, k: &V3) -> (V3, SType) {
     let ij = j - i;
     let jk = k - j;
@@ -181,7 +184,6 @@ pub fn simplex_closest(ai: &V3, bi: &V3, ci: &V3, di: &V3) -> (V3, SType) {
             let p = b - c;
             line_closest(&c, p, p.normalize())
         }
-
         (true, false, false, false) => (d.clone(), SType::Vert(d.clone())),
         (false, true, false, false) => (b.clone(), SType::Vert(b.clone())),
         (false, false, true, false) => (c.clone(), SType::Vert(c.clone())),
