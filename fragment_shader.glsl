@@ -124,16 +124,15 @@ vec3 get_light_color(vec3 normal, vec3 inter, int id, vec2 uv, float dist, vec3 
 
     float shadow = shadowCast(inter+normal*0.01,normalize(inter_to_light),length(inter_to_light));
 
-    shadow = smoothstep(-0.1,0.8,shadow); 
-    shadow = 0.0 + (shadow*1.0);
+    shadow = smoothstep(-0.03,0.8,shadow); 
+    shadow = 0.3 + (shadow*0.7);
     shadow = clampn(shadow);
 
     vec3 lightdot = vec3(clampn(dot(-normal,normalize(inter-light_pos))));
- 
     output += lightdot * light_color * light_brightness * shadow;
-    output += pow(lightdot, vec3(200.)) * 0.2* shadow;
-    if (dist < 0.) output = vec3(0.10,0.10,0.5)/ light_count;
-
+    output += (1.0-lightdot)*0.4 * light_color * light_brightness * shadow;
+    output += pow(lightdot, vec3(200.)) * 0.1* shadow;
+    if (dist < 0.) output = vec3(0.10,0.20,0.40)/ light_count;
     output += vec3(1.,1.3,1.)*light_color*(0.2+light_brightness)*(1.4* clamp(pow(dot(normalize(rd), normalize(light_pos)),380.),0.,1.));   
 
     return output;
@@ -161,11 +160,11 @@ void main()
 //    color *= vec3(9.4,2.4,0.8);
     if(di<0.)dist = 10.;
     
-    float y =  pow(2.718, -dist*0.038);
+    float y =  pow(2.718, -dist*0.0018);
     y = smoothstep(0.,1.,y);
     vec3 debug = vec3(y);
-    color = mix(vec3(0.2,0.2,0.3),color, 0.7+0.3*y );
-    color = pow(color,vec3(0.4500));
-    color = smoothstep(0.,1.,color);
+    color = mix(vec3(0.5,0.5,0.5), color, y);
+    color = pow(color,vec3(0.5000));
+    color = smoothstep(0.1,1.,color);
     vertexColor = vec4(color,1.);
 }

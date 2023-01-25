@@ -61,14 +61,14 @@ impl ObjectManager {
         };
         //shapes
         om.add_object(
-            V3::new(0.0, 2., 4.5),
+            V3::new(0.0, -2., 4.5),
             BasicShape::Cube([5., 0.3, 1.2]),
             true,//static
             10.,
-            V3::new(0.8, 0.4, 0.) * 0.1,
+            V3::new(0.0, 0.0, 0.4) * 0.0,
         );
         om.add_object(
-            V3::new(0.0, 0., 6.5),
+            V3::new(-4.5, -2., 4.5),
             BasicShape::Cube([5., 0.3, 1.2]),
             false,
             20.1,
@@ -76,32 +76,25 @@ impl ObjectManager {
         );
         //walls
         om.add_object(
-            V3::new(0.0, -10., 5.),
-            BasicShape::Cube([20., 1.2, 20.]),
+            V3::new(0.0, -5., 5.),
+            BasicShape::Cube([20.,0.2,20.]),
             true,
             20.1,
             V3::new(0.0, 0., 0.),
         );
-        om.add_object(
-            V3::new(0.0, 0., 15.),
-            BasicShape::Cube([20., 20., 1.2]),
-            true,
-            20.1,
-            V3::new(0.0, 0., 0.),
-        );
-        om.add_light(V3::new(10., 10., -4.), V3::new(3.2, 0.4, 0.1), 0.9);
-        om.add_light(V3::new(0., 100., 0.), V3::new(0.1, 0.2, 0.9), 0.5);
-        om.add_light(V3::new(-6., 0., -5.), V3::new(0.4, 0.4, 0.4), 0.2);
+        om.add_light(V3::new(10., 10., 4.), V3::new(2.8, 1.8, 1.1), 0.3);
+        om.add_light(V3::new(0., 100., 0.), V3::new(0.1, 0.1, 0.9), 0.1);
+        om.add_light(V3::new(-6., 0., -5.), V3::new(0.4, 0.4, 0.8), 0.3);
         om.cam.0.y -= 2.;
         om.cam.0.z -= 2.;
         let desc = ConstraintDesc {
-            apoint: V3::new(-2.5, 0.0, 0.0),
-            bpoint: V3::new(-2.5, 0.0, 0.0),
+            apoint: V3::new(-2.5, 0.30, 0.0),
+            bpoint: V3::new(2.5, 0.0, 0.0),
             has_distance: true,
-            has_angular: false,
-            distance_compliance: 0.00001,
-            angular_compliance: 0.000000010,
-            distance: 2.0,
+            has_angular: true,
+            distance_compliance: 0.000000,
+            angular_compliance: 0.00000000,
+            distance: 0.0,
             aorient: UnitQuaternion::<f64>::default(),
             borient: UnitQuaternion::<f64>::default(),
             ajoint_axis: (V3::default(), V3::default(), V3::default()),
@@ -113,7 +106,7 @@ impl ObjectManager {
             has_distance: true,
             has_angular: false,
             distance_compliance: 0.001,
-            angular_compliance: 0.00001,
+            angular_compliance: 0.000001,
             distance: 2.,
             aorient: UnitQuaternion::<f64>::default(),
             borient: UnitQuaternion::<f64>::default(),
@@ -181,13 +174,45 @@ impl ObjectManager {
                 self.cam_speed * deltatime * 0.15,
             ) * self.cam.1;
         }
-
         if self.input_manager.get_key_pressed(Key::MOUSELEFT) {
             self.select_object(); 
         }
         if self.input_manager.get_key_released(Key::MOUSELEFT) {
             self.deselect_object(); 
         }
+        if self.input_manager.get_key_released(Key::T) {
+            //test 
+            let test = (V3::new(2.,0.,3.),V3::new(0.,0.,-1.)).intersect_ray(V3::new(0.,0.,0.), V3::new(0.,0.,1.));
+            let test1= (V3::new(0.,0.,3.),V3::new(0.,0.,-1.)).intersect_ray(V3::new(0.,0.,0.), V3::new(0.,0.,-1.));
+            let test2= (V3::new(0.,0.,3.),V3::new(0.,0.,-1.)).intersect_ray(V3::new(0.,0.,5.), V3::new(0.,0.,1.));
+            let test3= (V3::new(0.,0.,3.),V3::new(0.,0.,-1.)).intersect_ray(V3::new(0.,0.,0.), V3::new(1.,0.,1.).normalize());
+            println!("test: {:?}",test);
+            println!("test: {:?}",test1); //should be none
+            println!("test: {:?}",test2); //should be none
+            println!("test: {:?}",test3); //should be none
+            println!("{:?}","plane tests passed");           
+
+
+            let tri_test = (
+                V3::new(-1.,-1.,2.),
+                V3::new( 1.,-1.,2.),
+                V3::new( 0.,1.,2.)
+                ).intersect_ray(
+                V3::new(0.,0.,0.),
+                V3::new(0.,0.,1.).normalize());
+            println!("tri_test1: {:?}",tri_test); 
+            let tri_test2= (
+                V3::new( 0.,1.,2.),
+                V3::new(-1.,0.,2.),
+                V3::new( 1.,0.,2.)
+                ).intersect_ray(
+                V3::new(0.,0.,3.),
+                V3::new(1.,0.,1.).normalize());
+            println!("tri_test2: {:?}",tri_test2); 
+
+        }
+
+        
     }
     pub fn get_cam_dir_X(&self) -> V3 {
         self.cam.1 * V3::new(1., 0., 0.)
@@ -208,11 +233,11 @@ impl ObjectManager {
                     self.selection.point_local = intersection.0;
                     self.selection.id = Some(i);
                     min_dist = intersection.1;
+//                    println!("{:?}",self.selection);
                 }
             }
             i+=1;
         }
-        println!("{:?}",self.selection);
     }
     pub fn deselect_object(&mut self){
         self.selection.id = None; 
@@ -253,9 +278,9 @@ impl ObjectManager {
         self.screen_dim = dim;
         self.debug.clear();
         self.handle_input(dt);
+        self.handle_selection(dt);
         self.input_manager.update();
         self.physics_manager.update_physics(&mut self.objects,&mut self.selection.constraint, dt, ct);
-        self.handle_selection(dt);
 
 //        self.add_debug_lines_for_cube(0, V3::new(1., 1., 0.));
 //        self.add_debug_lines_for_cube(1, V3::new(1., 0., 1.));
@@ -274,18 +299,16 @@ impl ObjectManager {
             self.selection.constraint.c_desc.has_angular  = false;
             self.selection.constraint.c_desc.has_distance = true;
             self.selection.constraint.c_desc.distance = 0.;
-            self.selection.constraint.c_desc.distance_compliance = 0.000001;
+            self.selection.constraint.c_desc.distance_compliance = 0.0001;
             let o1 = &self.objects[index];  
             let o1_point_global = o1.localtoglobal(self.selection.point_local);
             let point = self.mouse_intersects_plane(o1_point_global);
             let o1_mut = &mut self.objects[index];  
             self.selection.constraint.c_desc.bpoint = point;
-
         }
         else{
             self.selection.constraint.c_desc.has_distance = false;
         }
-         
     }
     pub fn mouse_intersects_plane(&self,point:V3)->V3{
         let cam_forward = (self.cam.1 * V3::new(0.,0.,1.)).normalize();
@@ -299,7 +322,7 @@ impl ObjectManager {
         mscreen.x/self.screen_dim.0,
         mscreen.y/self.screen_dim.1)*2. -Vector2::<f64>::new(1.,1.);
         uv.y *= -self.screen_dim.1/self.screen_dim.0;
-        self.cam.1 * V3::new(uv.x,uv.y,0.7).normalize()
+        (self.cam.1 * V3::new(uv.x,uv.y,0.7).normalize()).normalize()
     }
     pub fn get_cam_pos(&self) -> [f32; 3] {
         return [
@@ -356,17 +379,18 @@ impl ObjectManager {
         let lights_buffer =
             glium::uniforms::UniformBuffer::new(display, self.get_lights()).unwrap();
         let uniforms = glium::uniform! {
-        windowSizeX: dim.0 as u32,
-        windowSizeY: dim.1 as u32,
-        cPos: self.get_cam_pos(),
-        iTime: current_time,
-        light_count : self.lights.len() as f32,
-        object_count: self.get_len(),
-        lineColors: &debug_line_colors,
-        lights: &lights_buffer,
-        positions: &ub_pos,
-        dims: &ub_o_dim,
-        orientations: &ub_o};
+            windowSizeX: dim.0 as u32,
+            windowSizeY: dim.1 as u32,
+            cPos: self.get_cam_pos(),
+            iTime: current_time,
+            light_count : self.lights.len() as f32,
+            object_count: self.get_len(),
+            lineColors: &debug_line_colors,
+            lights: &lights_buffer,
+            positions: &ub_pos,
+            dims: &ub_o_dim,
+            orientations: &ub_o
+        };
         target.clear_color(0., 0., 0., 0.);
         let debug_v = self.get_debug_program(&display);
 

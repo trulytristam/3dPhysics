@@ -86,10 +86,10 @@ impl IntersectsRay for (V3,V3,V3){//triangle intersection
     fn intersect_ray(&self, ro: V3, rd: V3)-> Option<V3>{
         let ab = self.1 - self.0;
         let ac = self.2 - self.0;
-        let plane_intersect = (self.0, ab.cross(&ac).normalize()).intersect_ray(ro,rd);
+        let plane_intersect = (self.0, ac.cross(&ab).normalize()).intersect_ray(ro,rd);
         if let Some(point) = plane_intersect {
             let tc = triangle_closest(&(self.0-point), &(self.1-point), &(self.2-point));
-            if tc.norm() > 0.0001 {
+            if tc.norm() < 0.000000001 {
                 Some(point)
             }
             else{

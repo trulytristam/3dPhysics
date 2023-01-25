@@ -15,8 +15,8 @@ fn main() {
     let mut om = object_manager::ObjectManager::new();
     let event_loop = glutin::event_loop::EventLoop::new();
     let wb = glutin::window::WindowBuilder::new().with_min_inner_size(PhysicalSize {
-        width: 1000,
-        height: 400,
+        width: 1500,
+        height: 901,
     });
     let cb = glutin::ContextBuilder::new();
     // Create a window

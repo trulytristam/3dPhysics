@@ -18,7 +18,7 @@ impl PhysicsManager {
         }
     }
     pub fn update_physics(&mut self, objects: &mut Vec<Object>,mouse_object:&mut Constraint, dt: f64, ct: f64) {
-        let n_sub = 20;
+        let n_sub = 40;
         let h = dt / (n_sub as f64);
         self.init_contraints();
         mouse_object.lagrange = 0.;
@@ -49,6 +49,7 @@ impl PhysicsManager {
             c_desc: desc,
             lagrange: 0.,
             angular_lagrange: 0.,
+            joint_limit_lagrange: 0.,
         };
         self.constraints.push(c);
     }

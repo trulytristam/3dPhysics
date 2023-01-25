@@ -31,6 +31,7 @@ impl ConstraintDesc {
     fn limit_angle(n: &V3, n1: &V3, n2: &V3, a: f64, b: f64) -> V3 {
         let mut out = V3::new(0., 0., 0.);
         let mut angle = (n1.cross(&n2).dot(n)).asin();
+//        println!("angle from limit_angle: {:?}",angle);
 
         if n1.dot(&n2) < 0. {
             angle = PI - angle;
@@ -46,7 +47,7 @@ impl ConstraintDesc {
             angle = clamp(angle, a, b);
             let q = UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(n.clone()), angle);
             let nn1 = q * n1;
-            out = nn1.cross(&n2);
+            out = n2.cross(&nn1);
         }
 
         out
@@ -79,10 +80,12 @@ pub struct Constraint {
     pub c_desc: ConstraintDesc,
     pub lagrange: f64,
     pub angular_lagrange: f64,
+    pub joint_limit_lagrange: f64,
 }
 
 impl Constraint {
-    fn apply_angular_correction(&mut self, nvec: V3, o1: &mut Object, o2: &mut Object, h: f64) {
+    fn apply_angular_correction(&mut self, nvec: V3, o1: &mut Object, 
+                                o2: &mut Object, h: f64, compliance: f64, lagrange: &mut f64) {
         if nvec.norm() <= 0.00001 {
             return;
         }
@@ -95,13 +98,12 @@ impl Constraint {
         let w2 = (n2_local.transpose() * o2.ii_t * n2_local).x;
 
         let c = nvec.norm();
-        let a = self.c_desc.angular_compliance / (h * h);
+        let a = compliance / (h * h);
 
-        let top = -c - a * self.angular_lagrange;
+        let top = -c - a * *lagrange;
         let bot = w1 + w2 + a;
         let dy = top / bot;
-        self.angular_lagrange += dy;
-
+        *lagrange += dy;
         let p = n * dy;
 
         //update pos
@@ -119,14 +121,20 @@ impl Constraint {
         o2.o = UQ::new_normalize(o2on - 0.5 * Quaternion::<f64>::new(0., bq.x, bq.y, bq.z) * o2on);
     }
     fn solve_constraing_angular(&mut self, o1: &mut Object, o2: &mut Object, h: f64) {
+
         let nvec = self.c_desc.get_correction(o1, o2);
-        self.apply_angular_correction(nvec, o1, o2, h);
+        let mut lagrange = self.angular_lagrange;
+        self.apply_angular_correction(nvec, o1, o2, h,self.c_desc.angular_compliance, &mut lagrange);
+        self.angular_lagrange = lagrange;
         let (n, n1, n2) = (
             o1.o * self.c_desc.ajoint_axis.2,
             o1.o * self.c_desc.ajoint_axis.0,
             o2.o * self.c_desc.bjoint_axis.0,
         );
-        //        self.apply_angular_correction(ConstraintDesc::limit_angle(&n,&n1,&n2, -0.3, 0.3),o1,o2,h);
+        let test = ConstraintDesc::limit_angle(&n,&n1,&n2, 0.15, 3.1);
+        let mut lagrange = self.joint_limit_lagrange;
+        self.apply_angular_correction(test,o1,o2,h,0.00000000,&mut lagrange);
+        self.joint_limit_lagrange = lagrange;
     }
     fn solve_constraint_linear(&mut self, o1: &mut Object, o2: &mut Object, h: f64) {
         let r1_global = o1.localtoglobal(self.c_desc.apoint);
@@ -171,9 +179,7 @@ impl Constraint {
         self.lagrange += dy;
     }
     
-    pub fn solve_constraint_linear_object_point(&mut self, o1: &mut Object, point: V3, dt: f64) {
-        let h = dt/20.;
-        for i in 0..20{
+    pub fn solve_constraint_linear_object_point(&mut self, o1: &mut Object, point: V3, h: f64) {
             let r1_global = o1.localtoglobal(self.c_desc.apoint);
             let between = point - r1_global;
             if between.norm() > self.c_desc.distance{
@@ -195,7 +201,6 @@ impl Constraint {
                 o1.o = UQ::new_normalize(o1on + 0.5 * Quaternion::<f64>::new(0., aq.x, aq.y, aq.z) * o1on);
                 self.lagrange += dy;
             }
-        }
     }
 
     pub fn solve_constraint(&mut self, objects: &mut Vec<Object>, h: f64) {
@@ -213,6 +218,7 @@ impl Constraint {
     pub fn initialize(&mut self) {
         self.lagrange = 0.;
         self.angular_lagrange = 0.;
+        self.joint_limit_lagrange = 0.;
     }
 }
 pub struct PhysicsManager {
